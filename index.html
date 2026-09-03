@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Royaume 3D</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="theme-color" content="#0f1512">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Royaume 3D">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <script type="importmap">
+  { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="c"></canvas>
+
+    <div id="ui" hidden>
+      <div id="joy"><i></i></div>
+      <button id="btn-attack" aria-label="Coup d'épée">⚔️</button>
+      <p id="hint">Glisse à gauche pour marcher · à droite pour tourner la caméra</p>
+      <div id="fps" hidden></div>
+    </div>
+
+    <div id="loader">
+      <div class="spin"></div>
+      <p>On dresse le royaume…</p>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
