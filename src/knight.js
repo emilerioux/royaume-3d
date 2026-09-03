@@ -87,74 +87,121 @@ export class Knight {
     };
 
     // ---------------------------------------------------------------- squelette
-    const body = joint(this.root, 0, -0.06, 0);
+    // Anatomie humaine (vraies épaules, taille, membres) mais tête agrandie
+    // à environ 1/4 de la hauteur pour rester lisible sur un petit écran.
+    const body = joint(this.root, 0, 0, 0);
     this.body = body;
-    const hips = joint(body, 0, 1.04, 0);
-    const spine = joint(hips, 0, 0.17, 0);
-    const chest = joint(spine, 0, 0.28, 0);
-    const neck = joint(chest, 0, 0.21, 0);
-    const headJ = joint(neck, 0, 0.13, 0);
+    this.baseY = 0;
+    const hips = joint(body, 0, 0.72, 0);
+    const spine = joint(hips, 0, 0.11, 0);
+    const chest = joint(spine, 0, 0.20, 0);
+    const neck = joint(chest, 0, 0.20, 0);
+    const headJ = joint(neck, 0, 0.11, 0);
     Object.assign(this, { hips, spine, chest, headJ });
 
-    const shL = joint(chest, -0.205, 0.10, 0);
-    const shR = joint(chest, 0.205, 0.10, 0);
-    const elL = joint(shL, 0, -0.30, 0);
-    const elR = joint(shR, 0, -0.30, 0);
+    const shL = joint(chest, -0.19, 0.09, 0);
+    const shR = joint(chest, 0.19, 0.09, 0);
+    const elL = joint(shL, 0, -0.27, 0);
+    const elR = joint(shR, 0, -0.27, 0);
     Object.assign(this, { shL, shR, elL, elR });
 
-    const thL = joint(hips, -0.105, -0.06, 0);
-    const thR = joint(hips, 0.105, -0.06, 0);
-    const knL = joint(thL, 0, -0.50, 0);
-    const knR = joint(thR, 0, -0.50, 0);
+    const thL = joint(hips, -0.10, -0.05, 0);
+    const thR = joint(hips, 0.10, -0.05, 0);
+    const knL = joint(thL, 0, -0.32, 0);
+    const knR = joint(thR, 0, -0.32, 0);
     Object.assign(this, { thL, thR, knL, knR });
 
-    const plumeJ = joint(headJ, 0, 0.10, -0.06);
+    const HR = 0.185;                       // rayon de la tête
+    const plumeJ = joint(headJ, 0, 0.16, -0.09);
     this.plumeJ = plumeJ;
 
-    // ---------------------------------------------------------------- volumes
-    const pelvis = part(new THREE.CapsuleGeometry(0.145, 0.16, 6, 12), mL);
-    pelvis.position.y = -0.05; pelvis.scale.z = 0.9; hips.add(pelvis);
+    // ---------------------------------------------------------------- torse et bassin
+    // plus larges que profonds, comme un vrai buste
+    const pelvis = part(new THREE.CapsuleGeometry(0.125, 0.09, 6, 12), mL);
+    pelvis.position.y = -0.03; pelvis.scale.set(1.15, 1, 0.78); hips.add(pelvis);
 
-    const torso = part(new THREE.CapsuleGeometry(0.163, 0.42, 6, 14), mT);
-    chest.add(torso);
-    const cuir = part(new THREE.SphereGeometry(0.183, 20, 16), mS);
-    cuir.scale.set(0.95, 1.16, 0.80); cuir.position.y = 0.03; chest.add(cuir);
-    const belt = part(new THREE.TorusGeometry(0.168, 0.03, 8, 20), mGold);
-    belt.rotation.x = Math.PI / 2; hips.add(belt);
+    const torso = part(new THREE.CapsuleGeometry(0.145, 0.24, 6, 14), mT);
+    torso.position.y = 0.01; torso.scale.set(1.24, 1, 0.8); chest.add(torso);
+    const cuir = part(new THREE.SphereGeometry(0.166, 20, 16), mS);
+    cuir.scale.set(1.2, 1.22, 0.8); cuir.position.y = 0.035; chest.add(cuir);
+    const belt = part(new THREE.TorusGeometry(0.148, 0.027, 8, 20), mGold);
+    belt.rotation.x = Math.PI / 2; belt.scale.set(1.14, 1, 0.8); hips.add(belt);
 
-    const pauld = new THREE.SphereGeometry(0.082, 14, 12);
-    const pL = part(pauld, mS); pL.scale.set(1.1, 0.8, 1.05); shL.add(pL);
-    const pR = part(pauld, mS); pR.scale.set(1.1, 0.8, 1.05); shR.add(pR);
+    // ---------------------------------------------------------------- bras
+    const pauld = new THREE.SphereGeometry(0.078, 14, 12);
+    const pL = part(pauld, mS); pL.scale.set(1.15, 0.85, 1.05); shL.add(pL);
+    const pR = part(pauld, mS); pR.scale.set(1.15, 0.85, 1.05); shR.add(pR);
 
-    const uaL = part(new THREE.CapsuleGeometry(0.052, 0.22, 5, 10), mT); uaL.position.y = -0.15; shL.add(uaL);
-    const uaR = part(new THREE.CapsuleGeometry(0.052, 0.22, 5, 10), mT); uaR.position.y = -0.15; shR.add(uaR);
-    const faL = part(new THREE.CapsuleGeometry(0.047, 0.20, 5, 10), mSD); faL.position.y = -0.14; elL.add(faL);
-    const faR = part(new THREE.CapsuleGeometry(0.047, 0.20, 5, 10), mSD); faR.position.y = -0.14; elR.add(faR);
-    const hL = part(new THREE.SphereGeometry(0.056, 10, 8), mL); hL.position.y = -0.28; elL.add(hL);
-    this.handR = joint(elR, 0, -0.28, 0);
-    this.handR.add(part(new THREE.SphereGeometry(0.056, 10, 8), mL));
+    const uaL = part(new THREE.CapsuleGeometry(0.05, 0.19, 5, 10), mT); uaL.position.y = -0.135; shL.add(uaL);
+    const uaR = part(new THREE.CapsuleGeometry(0.05, 0.19, 5, 10), mT); uaR.position.y = -0.135; shR.add(uaR);
+    const faL = part(new THREE.CapsuleGeometry(0.045, 0.18, 5, 10), mSD); faL.position.y = -0.13; elL.add(faL);
+    const faR = part(new THREE.CapsuleGeometry(0.045, 0.18, 5, 10), mSD); faR.position.y = -0.13; elR.add(faR);
 
-    const thighL = part(new THREE.CapsuleGeometry(0.079, 0.28, 5, 10), mL); thighL.position.y = -0.18; thL.add(thighL);
-    const thighR = part(new THREE.CapsuleGeometry(0.079, 0.28, 5, 10), mL); thighR.position.y = -0.18; thR.add(thighR);
-    const shinL = part(new THREE.CapsuleGeometry(0.065, 0.30, 5, 10), mSD); shinL.position.y = -0.19; knL.add(shinL);
-    const shinR = part(new THREE.CapsuleGeometry(0.065, 0.30, 5, 10), mSD); shinR.position.y = -0.19; knR.add(shinR);
-    const footL = part(new THREE.BoxGeometry(0.12, 0.08, 0.24), mL); footL.position.set(0, -0.38, 0.05); knL.add(footL);
-    const footR = part(new THREE.BoxGeometry(0.12, 0.08, 0.24), mL); footR.position.set(0, -0.38, 0.05); knR.add(footR);
+    const poing = new THREE.SphereGeometry(0.055, 10, 9);
+    const hL = part(poing, mL); hL.position.y = -0.26; hL.scale.set(1, 1.15, 0.85); elL.add(hL);
+    this.handR = joint(elR, 0, -0.26, 0);
+    const hR = part(poing, mL); hR.scale.set(1, 1.15, 0.85); this.handR.add(hR);
 
-    neck.add(part(new THREE.CylinderGeometry(0.05, 0.06, 0.08, 10), mSkin));
-    headJ.add(part(new THREE.SphereGeometry(0.104, 16, 14), mSkin));
-    const helm = part(new THREE.SphereGeometry(0.127, 22, 18, 0, Math.PI * 2, 0, Math.PI * 0.74), mS);
-    helm.position.y = 0.012; headJ.add(helm);
-    const comb = part(new THREE.BoxGeometry(0.026, 0.045, 0.22), mGold);
-    comb.position.y = 0.106; headJ.add(comb);
-    const plume = part(new THREE.CapsuleGeometry(0.03, 0.20, 4, 8), mPlume);
-    plume.position.y = 0.12; plume.rotation.x = -0.5; plumeJ.add(plume);
+    // ---------------------------------------------------------------- jambes et bottes
+    const thighL = part(new THREE.CapsuleGeometry(0.078, 0.20, 5, 10), mL); thighL.position.y = -0.14; thL.add(thighL);
+    const thighR = part(new THREE.CapsuleGeometry(0.078, 0.20, 5, 10), mL); thighR.position.y = -0.14; thR.add(thighR);
+    const shinL = part(new THREE.CapsuleGeometry(0.062, 0.19, 5, 10), mSD); shinL.position.y = -0.14; knL.add(shinL);
+    const shinR = part(new THREE.CapsuleGeometry(0.062, 0.19, 5, 10), mSD); shinR.position.y = -0.14; knR.add(shinR);
+    for (const [kn, sgn] of [[knL, -1], [knR, 1]]) {
+      const boot = part(new THREE.BoxGeometry(0.115, 0.09, 0.2), mL);
+      boot.position.set(0, -0.30, 0.03); kn.add(boot);
+      const toe = part(new THREE.SphereGeometry(0.058, 10, 8), mL);
+      toe.position.set(0, -0.30, 0.115); toe.scale.set(1, 0.8, 1); kn.add(toe);
+    }
+
+    // ---------------------------------------------------------------- tête et visage
+    neck.add(part(new THREE.CylinderGeometry(0.052, 0.068, 0.09, 10), mSkin));
+    const head = part(new THREE.SphereGeometry(HR, 20, 16), mSkin);
+    head.scale.set(1, 1.06, 0.96);
+    headJ.add(head);
+
+    const mEyeW = mk(0xf7f3ea, 0.45, 0);
+    const mEyeD = mk(0x241a14, 0.6, 0);
+    const mBouche = mk(0x8f4d44, 0.7, 0);
+    for (const ex of [-0.066, 0.066]) {
+      const oeil = part(new THREE.SphereGeometry(0.037, 12, 10), mEyeW);
+      oeil.position.set(ex, 0.008, HR * 0.83); oeil.scale.set(1, 1.12, 0.55);
+      headJ.add(oeil);
+      const pup = part(new THREE.SphereGeometry(0.019, 10, 8), mEyeD);
+      pup.position.set(ex, 0.008, HR * 0.93); pup.scale.z = 0.55;
+      headJ.add(pup);
+      const sourcil = part(new THREE.BoxGeometry(0.058, 0.015, 0.022), mEyeD);
+      sourcil.position.set(ex, 0.068, HR * 0.86);
+      sourcil.rotation.z = ex < 0 ? 0.18 : -0.18;
+      headJ.add(sourcil);
+    }
+    const nez = part(new THREE.SphereGeometry(0.03, 10, 8), mSkin);
+    nez.position.set(0, -0.032, HR * 0.95); nez.scale.set(0.75, 1.1, 1.1);
+    headJ.add(nez);
+    const bouche = part(new THREE.BoxGeometry(0.055, 0.013, 0.02), mBouche);
+    bouche.position.set(0, -0.098, HR * 0.86);
+    headJ.add(bouche);
+
+    // heaume OUVERT : calotte pleine + couvre-nuque qui laisse le visage dégagé
+    const RH = HR + 0.024;
+    const calotte = part(new THREE.SphereGeometry(RH, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.37), mS);
+    calotte.position.y = 0.006; headJ.add(calotte);
+    const nuque = part(
+      new THREE.SphereGeometry(RH, 24, 14, Math.PI * 0.92, Math.PI * 1.16, Math.PI * 0.34, Math.PI * 0.34), mS);
+    nuque.material.side = THREE.DoubleSide;
+    nuque.position.y = 0.006; headJ.add(nuque);
+    const nasal = part(new THREE.BoxGeometry(0.032, 0.15, 0.028), mS);
+    nasal.position.set(0, 0.005, HR * 0.94); headJ.add(nasal);
+    const comb = part(new THREE.BoxGeometry(0.03, 0.05, 0.26), mGold);
+    comb.position.y = RH * 0.94; headJ.add(comb);
+    const plume = part(new THREE.CapsuleGeometry(0.032, 0.20, 4, 8), mPlume);
+    plume.position.y = 0.11; plume.rotation.x = -0.5; plumeJ.add(plume);
 
     // ---------------------------------------------------------------- cape souple (5 segments)
     this.capeSegs = [];
-    const CW = [0.29, 0.27, 0.245, 0.21, 0.165];
-    const CH = [0.17, 0.16, 0.15, 0.135, 0.115];
-    let capeParent = joint(chest, 0, 0.05, -0.15);
+    const CW = [0.28, 0.265, 0.24, 0.205, 0.16];
+    const CH = [0.15, 0.14, 0.13, 0.12, 0.10];
+    let capeParent = joint(chest, 0, 0.05, -0.13);
     for (let i = 0; i < 5; i++) {
       const seg = i === 0 ? capeParent : joint(capeParent, 0, -CH[i - 1], 0);
       const m = part(new THREE.BoxGeometry(CW[i], CH[i], 0.02), mCape);
@@ -170,64 +217,63 @@ export class Knight {
     const mMail = mk(0x8d949c, 0.55, 0.45);
     const mBlas = mk(0xd8b24a, 0.5, 0.2);
 
-    // visière : bandeau sur le visage + fente sombre + rivets
+    // visière : ferme le heaume ouvert
     const visor = new THREE.Group();
-    const band = part(new THREE.BoxGeometry(0.19, 0.085, 0.035), mS);
-    band.position.set(0, 0.005, 0.098); visor.add(band);
-    const fente = part(new THREE.BoxGeometry(0.145, 0.022, 0.02), mSD);
-    fente.position.set(0, 0.012, 0.118); visor.add(fente);
-    for (const rx of [-0.075, 0.075]) {
-      const riv = part(new THREE.SphereGeometry(0.014, 6, 5), mGold);
-      riv.position.set(rx, -0.035, 0.105); visor.add(riv);
+    const band = part(new THREE.BoxGeometry(0.24, 0.10, 0.04), mS);
+    band.position.set(0, 0.01, HR * 0.92); visor.add(band);
+    const fente = part(new THREE.BoxGeometry(0.19, 0.024, 0.022), mSD);
+    fente.position.set(0, 0.022, HR * 1.02); visor.add(fente);
+    for (const rx of [-0.095, 0.095]) {
+      const riv = part(new THREE.SphereGeometry(0.015, 6, 5), mGold);
+      riv.position.set(rx, -0.035, HR * 0.95); visor.add(riv);
     }
-    const nasal = part(new THREE.BoxGeometry(0.028, 0.13, 0.03), mS);
-    nasal.position.set(0, -0.03, 0.104); visor.add(nasal);
+    const mentonn = part(new THREE.BoxGeometry(0.2, 0.09, 0.04), mS);
+    mentonn.position.set(0, -0.095, HR * 0.86); visor.add(mentonn);
     headJ.add(visor);
     this.eqVisor = visor;
 
     // écu au bras gauche
     const shield = new THREE.Group();
-    const plate = part(new THREE.CylinderGeometry(0.19, 0.145, 0.045, 14), mS);
+    const plate = part(new THREE.CylinderGeometry(0.175, 0.135, 0.042, 14), mS);
     plate.rotation.set(Math.PI / 2, 0, 0); shield.add(plate);
-    const boss = part(new THREE.SphereGeometry(0.052, 10, 8), mGold);
-    boss.position.z = 0.04; boss.scale.z = 0.6; shield.add(boss);
-    const bord = part(new THREE.TorusGeometry(0.185, 0.018, 6, 18), mGold);
+    const boss = part(new THREE.SphereGeometry(0.048, 10, 8), mGold);
+    boss.position.z = 0.038; boss.scale.z = 0.6; shield.add(boss);
+    const bord = part(new THREE.TorusGeometry(0.17, 0.017, 6, 18), mGold);
     shield.add(bord);
-    shield.position.set(-0.11, -0.16, 0.07);
+    shield.position.set(-0.1, -0.15, 0.07);
     shield.rotation.set(0.25, -0.35, 0.1);
     elL.add(shield);
     this.eqShield = shield;
 
     // jupe de mailles
-    const skirt = part(new THREE.CylinderGeometry(0.185, 0.235, 0.26, 14, 1, true), mMail);
+    const skirt = part(new THREE.CylinderGeometry(0.165, 0.205, 0.22, 14, 1, true), mMail);
     skirt.material.side = THREE.DoubleSide;
-    skirt.position.y = -0.15;
+    skirt.position.y = -0.13; skirt.scale.set(1.1, 1, 0.85);
     hips.add(skirt);
     this.eqSkirt = skirt;
 
-    // blason : torse + cape
-    const blasTorse = part(new THREE.CircleGeometry(0.072, 12), mBlas);
-    blasTorse.position.set(0, 0.02, 0.163);
+    // blason
+    const blasTorse = part(new THREE.CircleGeometry(0.062, 12), mBlas);
+    blasTorse.position.set(0, 0.03, 0.142);
     chest.add(blasTorse);
     this.eqBlazonChest = blasTorse;
 
     // ---------------------------------------------------------------- épée + ses deux emplacements
     const sword = new THREE.Group();
     this.sword = sword;
-    body.add(sword);                       // placée chaque image entre dos et main
-    const blade = part(new THREE.BoxGeometry(0.05, 0.86, 0.13), mS); blade.position.y = 0.42; sword.add(blade);
-    const guard = part(new THREE.BoxGeometry(0.24, 0.05, 0.17), mGold); sword.add(guard);
-    const grip = part(new THREE.CylinderGeometry(0.028, 0.028, 0.15, 8), mL); grip.position.y = -0.10; sword.add(grip);
-    const pommel = part(new THREE.SphereGeometry(0.038, 10, 8), mGold); pommel.position.y = -0.18; sword.add(pommel);
-    this.bladeBase = new THREE.Object3D(); this.bladeBase.position.y = 0.12; sword.add(this.bladeBase);
-    this.bladeTip = new THREE.Object3D(); this.bladeTip.position.y = 0.88; sword.add(this.bladeTip);
+    body.add(sword);
+    const blade = part(new THREE.BoxGeometry(0.046, 0.72, 0.115), mS); blade.position.y = 0.36; sword.add(blade);
+    const guard = part(new THREE.BoxGeometry(0.21, 0.045, 0.15), mGold); sword.add(guard);
+    const grip = part(new THREE.CylinderGeometry(0.026, 0.026, 0.13, 8), mL); grip.position.y = -0.09; sword.add(grip);
+    const pommel = part(new THREE.SphereGeometry(0.034, 10, 8), mGold); pommel.position.y = -0.16; sword.add(pommel);
+    this.bladeBase = new THREE.Object3D(); this.bladeBase.position.y = 0.10; sword.add(this.bladeBase);
+    this.bladeTip = new THREE.Object3D(); this.bladeTip.position.y = 0.74; sword.add(this.bladeTip);
 
     this.slotBack = new THREE.Object3D();
-    this.slotBack.position.set(-0.03, 0.02, -0.17);
+    this.slotBack.position.set(-0.03, 0.02, -0.15);
     this.slotBack.rotation.set(-0.28, 0, 0.5);
     chest.add(this.slotBack);
 
-    // la lame prolonge l'avant-bras : le poing tient la garde, la pointe part vers l'avant
     this.slotHand = new THREE.Object3D();
     this.slotHand.position.set(0, -0.04, 0.02);
     this.slotHand.rotation.set(Math.PI * 0.94, 0, 0);
@@ -238,8 +284,8 @@ export class Knight {
     this._qA = new THREE.Quaternion(); this._qB = new THREE.Quaternion();
     this._inv = new THREE.Matrix4(); this._q = new THREE.Quaternion();
 
-    const blasCape = part(new THREE.CircleGeometry(0.065, 12), mBlas);
-    blasCape.position.set(0, -0.08, -0.022);
+    const blasCape = part(new THREE.CircleGeometry(0.058, 12), mBlas);
+    blasCape.position.set(0, -0.07, -0.022);
     blasCape.rotation.y = Math.PI;
     this._capeBlasonHote.add(blasCape);
     this.eqBlazonCape = blasCape;
@@ -338,7 +384,7 @@ export class Knight {
     }
 
     // ---------------------------------------------------------------- bassin / torse
-    this.body.position.y = -0.06 + Math.abs(sw2) * (0.045 + runBlend * 0.03) * Math.min(1.3, g)
+    this.body.position.y = this.baseY + Math.abs(sw2) * (0.045 + runBlend * 0.03) * Math.min(1.3, g)
       + (g < 0.06 ? Math.sin(this.t * 1.6) * 0.006 : 0);
     this.hips.rotation.y = sw * 0.14 * walking;
     this.chest.rotation.y = -sw * 0.09 * walking;
