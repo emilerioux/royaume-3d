@@ -173,6 +173,15 @@ if (DEBUG) fpsEl.hidden = false;
 requestAnimationFrame(loop);
 requestAnimationFrame(() => { loaderEl.classList.add("gone"); setTimeout(() => loaderEl.remove(), 600); });
 
+if (DEBUG) window.__dbg = { knight, camera, THREE, input };
+
 if ("serviceWorker" in navigator && !DEBUG) {
   addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  // dès qu'une nouvelle version prend la main, on recharge : plus de vieille build coincée
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
 }
