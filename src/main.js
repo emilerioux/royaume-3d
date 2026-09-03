@@ -5,6 +5,8 @@ import * as THREE from "three";
 import { createInput } from "./input.js";
 import { buildWorld, groundKind } from "./world.js";
 import { Dust, BladeTrail } from "./fx.js";
+import { Coins } from "./coins.js";
+import { ITEMS, ITEM_PAR_ID, TENUE_DEPART, estCouleur } from "./gear.js";
 import { Knight, WALK_SPEED, RUN_SPEED } from "./knight.js";
 
 const DEBUG = location.search.includes("debug");
@@ -65,17 +67,119 @@ const SUN_OFF = new THREE.Vector3(14, 20, 9);
 // ---------------------------------------------------------------- monde + chevalier
 const world = buildWorld(scene);
 
+// ---------------------------------------------------------------- sauvegarde
+const SAVE = "royaume3d-save";
+const partie = (() => {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE));
+    if (d) return { or: d.or | 0, possede: d.possede || [], tenue: Object.assign({}, TENUE_DEPART, d.tenue || {}) };
+  } catch (e) {}
+  return { or: 0, possede: [], tenue: Object.assign({}, TENUE_DEPART) };
+})();
+function sauver() {
+  try { localStorage.setItem(SAVE, JSON.stringify(partie)); } catch (e) {}
+}
+
 const dust = new Dust(scene);
 const trail = new BladeTrail(scene);
 
 const knight = new Knight({
   trail,
+  loadout: partie.tenue,
   onFootstep: (x, y, z) => dust.spawn(x, y, z, groundKind(x, z)),
 });
 knight.root.position.set(0, 0, -0.6);   // sur la place, au milieu du hameau
 scene.add(knight.root);
 
+const coins = new Coins(scene, world.colliders);
+
 const input = createInput(canvas, document.getElementById("joy"), document.getElementById("btn-attack"));
+
+// ---------------------------------------------------------------- or, boutique, sauvegarde
+const orNEl = document.getElementById("or-n");
+const forgeEl = document.getElementById("forge");
+const forgeOrEl = document.getElementById("forge-or");
+const forgeListeEl = document.getElementById("forge-liste");
+const btnForge = document.getElementById("btn-forge");
+const toastsEl = document.getElementById("toasts");
+let boutiqueOuverte = false;
+
+function majOr() {
+  orNEl.textContent = partie.or;
+  forgeOrEl.textContent = partie.or;
+}
+function toast(msg) {
+  const d = document.createElement("div");
+  d.className = "toast";
+  d.textContent = msg;
+  toastsEl.appendChild(d);
+  setTimeout(() => d.remove(), 2000);
+}
+
+function porte(it) {
+  if (estCouleur(it)) return partie.tenue[it.champ] === it.valeur;
+  return partie.tenue[it.champ] === true;
+}
+
+function rendreBoutique() {
+  forgeListeEl.innerHTML = "";
+  for (const it of ITEMS) {
+    const acquis = partie.possede.includes(it.id);
+    const surLui = porte(it);
+    const row = document.createElement("div");
+    row.className = "art" + (acquis ? " acquis" : "");
+    const txt = document.createElement("div");
+    txt.className = "txt";
+    const b = document.createElement("b"); b.textContent = it.nom;
+    const sp = document.createElement("span");
+    sp.textContent = acquis ? it.desc : it.desc + " — " + it.prix + " or";
+    txt.append(b, sp);
+    const btn = document.createElement("button");
+    if (!acquis) {
+      btn.textContent = it.prix + " ◆";
+      btn.disabled = partie.or < it.prix;
+      btn.onclick = () => acheter(it);
+    } else if (surLui) {
+      btn.textContent = "Porté";
+      btn.className = "porte";
+      btn.disabled = !estCouleur(it);
+      if (estCouleur(it)) { btn.textContent = "Porté"; btn.disabled = true; }
+    } else {
+      btn.textContent = "Équiper";
+      btn.onclick = () => equiper(it);
+    }
+    row.append(txt, btn);
+    forgeListeEl.appendChild(row);
+  }
+}
+
+function acheter(it) {
+  if (partie.or < it.prix || partie.possede.includes(it.id)) return;
+  partie.or -= it.prix;
+  partie.possede.push(it.id);
+  partie.tenue[it.champ] = it.valeur;
+  knight.setLoadout(partie.tenue);
+  majOr(); sauver(); rendreBoutique();
+  toast("Acheté : " + it.nom);
+}
+function equiper(it) {
+  partie.tenue[it.champ] = it.valeur;
+  knight.setLoadout(partie.tenue);
+  sauver(); rendreBoutique();
+}
+
+function ouvrirBoutique() {
+  boutiqueOuverte = true;
+  majOr(); rendreBoutique();
+  forgeEl.hidden = false;
+  btnForge.hidden = true;
+}
+btnForge.addEventListener("click", ouvrirBoutique);
+document.getElementById("forge-close").addEventListener("click", () => {
+  boutiqueOuverte = false;
+  forgeEl.hidden = true;
+});
+majOr();
 
 // ---------------------------------------------------------------- caméra « diorama » : angle FIXE, elle suit sans jamais tourner
 const CAM_BASE = new THREE.Vector3(0, 13, 16);  // l'ANGLE (hauteur/recul) ne change jamais
@@ -94,7 +198,7 @@ const ACCEL = 22, DECEL = 30;             // m/s²
 function step(dt) {
   // --- entrée : le joystick est aligné sur l'ÉCRAN, pas sur le chevalier.
   //     Haut = vers le haut de l'écran, toujours. C'est ce qui rend ça prévisible.
-  const mv = input.move;
+  const mv = boutiqueOuverte ? { x: 0, y: 0 } : input.move;
   const kp = knight.root.position;
 
   moveDir.set(mv.x, 0, mv.y);
@@ -137,7 +241,7 @@ function step(dt) {
   }
 
   // --- attaque
-  if (input.consumeAttack()) knight.triggerAttack();
+  if (input.consumeAttack() && !boutiqueOuverte) knight.triggerAttack();
 
   // --- chevalier (renvoie l'avancée du coup d'épée)
   const lunge = knight.update(dt, {
@@ -168,8 +272,21 @@ function step(dt) {
   sun.target.position.copy(kp);
   sun.target.updateMatrixWorld();
 
+  // --- pièces d'or
+  const gagne = coins.tryCollect(kp.x, kp.z);
+  if (gagne) {
+    partie.or += gagne;
+    majOr(); sauver();
+    toast("+" + gagne + " or");
+  }
+
+  // --- devant l'armurerie ?
+  const dForge = Math.hypot(kp.x - world.armurerie.x, kp.z - world.armurerie.z);
+  if (!boutiqueOuverte) btnForge.hidden = dForge > 2.6;
+
   world.update(dt, performance.now() / 1000);
   dust.update(dt);
+  coins.update(dt, performance.now() / 1000);
 }
 
 // ---------------------------------------------------------------- boucle
@@ -213,7 +330,7 @@ requestAnimationFrame(() => { loaderEl.classList.add("gone"); setTimeout(() => l
 
 addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "h") knight.hurt(); });
 
-if (DEBUG) window.__dbg = { knight, camera, THREE, input, dust, trail };
+if (DEBUG) window.__dbg = { knight, camera, THREE, input, dust, trail, coins, partie, majOr, sauver, world };
 
 if ("serviceWorker" in navigator && !DEBUG) {
   addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));

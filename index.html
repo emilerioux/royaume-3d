@@ -22,9 +22,22 @@
     <div id="ui" hidden>
       <div id="joy"><i></i></div>
       <button id="btn-attack" aria-label="Coup d'épée">⚔️</button>
-      <p id="hint">v4 · Glisse à gauche pour marcher · ⚔️ pour frapper</p>
+      <p id="hint">v5 · Glisse à gauche pour marcher · ⚔️ pour frapper</p>
       <div id="fps" hidden></div>
+
+      <div id="or"><span class="piece">◆</span><span id="or-n">0</span></div>
+      <button id="btn-forge" hidden>⚒️ Armurerie</button>
+      <div id="toasts"></div>
     </div>
+
+    <section id="forge" hidden>
+      <header>
+        <h2>Armurerie</h2>
+        <span class="bourse"><span class="piece">◆</span><span id="forge-or">0</span></span>
+      </header>
+      <div id="forge-liste"></div>
+      <button id="forge-close">Sortir</button>
+    </section>
 
     <div id="loader">
       <div class="spin"></div>

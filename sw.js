@@ -2,7 +2,7 @@
    Stratégie RÉSEAU D'ABORD : tant qu'on a du signal on prend toujours la version
    la plus récente (fini le téléphone qui garde une vieille build en cache), et on
    retombe sur le cache dès qu'on est hors ligne. */
-const CACHE = "royaume3d-v4";
+const CACHE = "royaume3d-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -14,6 +14,9 @@ const ASSETS = [
   "./src/input.js",
   "./src/world.js",
   "./src/knight.js",
+  "./src/fx.js",
+  "./src/gear.js",
+  "./src/coins.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-180.png"

@@ -59,7 +59,7 @@ export function buildWorld(scene) {
     { x: -4.2, z: -3.0, rot: 0.22, roof: 0xb0704a },
     { x: 4.2, z: -4.2, rot: -0.34, roof: 0x8a5f7c },
     { x: -4.4, z: 3.6, rot: 0.12, roof: 0x6f8a6a },
-    { x: 4.2, z: 3.2, rot: -0.2, roof: 0xc39a58 },
+    { x: 4.2, z: 3.2, rot: -0.2, roof: 0xc39a58, armurerie: true },
   ];
   const winMat = new THREE.MeshStandardMaterial({
     color: 0xffe0a6, emissive: 0xffbf66, emissiveIntensity: 0.55, roughness: 0.6,
@@ -103,6 +103,21 @@ export function buildWorld(scene) {
     const chim = new THREE.Mesh(new THREE.BoxGeometry(0.38, 1.0, 0.38), own(mkMat(0x6a5848, 0.95)));
     chim.position.set(0.75, 2.8, -0.6); chim.castShadow = true;
     gg.add(chim);
+
+    if (h.armurerie) {
+      // enclume
+      const enc = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.26, 0.34), mkMat(0x4a4a52, 0.6, 0.4));
+      enc.position.set(1.15, 0.52, 1.5); enc.castShadow = true; gg.add(enc);
+      const socle = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), woodO);
+      socle.position.set(1.15, 0.21, 1.5); socle.castShadow = true; gg.add(socle);
+      // enseigne
+      const pot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 0.1), woodO);
+      pot.position.set(-1.35, 0.75, 1.6); pot.castShadow = true; gg.add(pot);
+      const pan = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.4, 0.06), woodO);
+      pan.position.set(-1.35, 1.32, 1.6); pan.castShadow = true; gg.add(pan);
+      const ep = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.28, 0.03), mkMat(0xc9ccd2, 0.35, 0.6));
+      ep.position.set(-1.35, 1.34, 1.65); gg.add(ep);
+    }
 
     group.add(gg);
     houses.push({ x: h.x, z: h.z, mats: hMats, fade: 1 });
@@ -238,9 +253,13 @@ export function buildWorld(scene) {
     group.add(im);
   }
 
+  const forge = HOUSES.find((h) => h.armurerie);
+
   return {
     colliders,
     houses,
+    // devant la porte de l'armurerie
+    armurerie: { x: forge.x, z: forge.z + 2.6 },
     update(dt, t) {
       for (const tg of trees) {
         tg.userData.fol.rotation.z = Math.sin(t * 1.1 + tg.userData.seed) * 0.045;
