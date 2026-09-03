@@ -12,11 +12,11 @@ export const TENUE_DEPART = {
 
 export const COULEURS = {
   cape:    { laine: 0x7d6a4e, rouge: 0x9c3f38, bleue: 0x2f5590, verte: 0x3f6f45 },
-  tunique: { bleu: 0x3f6cae, blanc: 0xd6d4c8, noir: 0x272733, vert: 0x44784c },
+  tunique: { bleu: 0x3d5470, blanc: 0xb9b3a4, noir: 0x22242b, vert: 0x4a6344 },
 };
 
 export const ITEMS = [
-  { id: "visiere", nom: "Heaume à visière", desc: "Visière, fente pour les yeux et rivets.",
+  { id: "visiere", nom: "Grand heaume", desc: "Heaume fermé, fente et respiraux.",
     prix: 90, champ: "visiere", valeur: true },
   { id: "mailles", nom: "Cotte de mailles", desc: "Jupe de mailles sous la ceinture.",
     prix: 110, champ: "mailles", valeur: true },

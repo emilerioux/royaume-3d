@@ -31,7 +31,7 @@ canvas.addEventListener("webglcontextrestored", () => location.reload());
 const scene = new THREE.Scene();
 
 // ciel dégradé + brume douce
-(() => {
+const envTex = (() => {
   const cnv = document.createElement("canvas");
   cnv.width = 2; cnv.height = 256;
   const g = cnv.getContext("2d");
@@ -42,7 +42,14 @@ const scene = new THREE.Scene();
   g.fillStyle = grd; g.fillRect(0, 0, 2, 256);
   const tex = new THREE.CanvasTexture(cnv);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.mapping = THREE.EquirectangularReflectionMapping;
   scene.background = tex;
+  // sans environnement, un matériau métallique rend NOIR : on en fabrique un
+  // à partir du ciel, réservé au chevalier pour ne pas délaver le décor.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromEquirectangular(tex).texture;
+  pmrem.dispose();
+  return env;
 })();
 scene.fog = new THREE.Fog(0xdcd9c8, 34, 92);
 
@@ -90,6 +97,11 @@ const knight = new Knight({
 });
 knight.root.position.set(0, 0, -0.6);   // sur la place, au milieu du hameau
 scene.add(knight.root);
+
+// l'acier du chevalier reflète le ciel (sinon le métal serait noir)
+for (const m of knight.mats) {
+  if (m.metalness > 0.2) { m.envMap = envTex; m.envMapIntensity = 0.9; m.needsUpdate = true; }
+}
 
 const coins = new Coins(scene, world.colliders);
 
@@ -182,7 +194,7 @@ document.getElementById("forge-close").addEventListener("click", () => {
 majOr();
 
 // ---------------------------------------------------------------- caméra « diorama » : angle FIXE, elle suit sans jamais tourner
-const CAM_BASE = new THREE.Vector3(0, 13, 16);  // l'ANGLE (hauteur/recul) ne change jamais
+const CAM_BASE = new THREE.Vector3(0, 10.8, 13.3);  // l'ANGLE (hauteur/recul) ne change jamais
 const CAM_OFF = CAM_BASE.clone();               // seule la distance s'adapte au format d'écran
 const camPos = new THREE.Vector3().copy(knight.root.position).add(CAM_OFF);
 const camGoal = new THREE.Vector3();
