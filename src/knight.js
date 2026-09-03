@@ -179,7 +179,7 @@ export class Knight {
     // orientation
     if (cmd.moving && (cmd.dir.x || cmd.dir.z)) {
       const want = Math.atan2(cmd.dir.x, cmd.dir.z);
-      this.yaw = lerpAngle(this.yaw, want, 1 - Math.pow(0.0002, dt));
+      this.yaw = lerpAngle(this.yaw, want, 1 - Math.pow(0.000002, dt));
     }
     this.root.rotation.y = this.yaw;
 

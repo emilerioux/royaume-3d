@@ -5,8 +5,11 @@
 import * as THREE from "three";
 
 const C = {
-  grassLo: 0x6f8347, grassHi: 0x8fa65c, path: 0xbfa478,
+  grassLo: 0x6f8347, grassHi: 0x8fa65c, path: 0xa8926c,
 };
+
+// le chemin serpente doucement — bien plus joli qu'une ligne droite
+const pathX = (z) => Math.sin(z * 0.06) * 3.5;
 
 export function buildWorld(scene) {
   const colliders = [];
@@ -26,7 +29,7 @@ export function buildWorld(scene) {
     let h = Math.sin(x * 0.09) * Math.cos(z * 0.08) * 0.7
           + Math.sin(x * 0.03 + z * 0.05) * 0.5
           + Math.sin(z * 0.13) * 0.25;
-    const onPath = Math.abs(x) < 1.9;
+    const onPath = Math.abs(x - pathX(z)) < 1.05;
     if (onPath) h *= 0.12;
     if (Math.hypot(x, z) < 6) h *= 0.2;               // place du village aplatie
     pos.setY(i, h);
@@ -48,57 +51,107 @@ export function buildWorld(scene) {
   const mkMat = (col, r = 0.85, m = 0) => new THREE.MeshStandardMaterial({ color: col, roughness: r, metalness: m });
   const wood = mkMat(0x6b4a30, 0.9);
   const plaster = mkMat(0xdac9a6, 0.95);
+  // hameau resserré : au format téléphone il faut toujours du décor à l'écran
   const HOUSES = [
-    { x: -7, z: -4, rot: 0.22, roof: 0xb0704a },
-    { x: 7.5, z: -7, rot: -0.34, roof: 0x8a5f7c },
-    { x: -8, z: 6, rot: 0.12, roof: 0x6f8a6a },
-    { x: 8, z: 5, rot: -0.2, roof: 0xc39a58 },
+    { x: -4.2, z: -3.0, rot: 0.22, roof: 0xb0704a },
+    { x: 4.2, z: -4.2, rot: -0.34, roof: 0x8a5f7c },
+    { x: -4.4, z: 3.6, rot: 0.12, roof: 0x6f8a6a },
+    { x: 4.2, z: 3.2, rot: -0.2, roof: 0xc39a58 },
   ];
+  const winMat = new THREE.MeshStandardMaterial({
+    color: 0xffe0a6, emissive: 0xffbf66, emissiveIntensity: 0.55, roughness: 0.6,
+  });
+  const houses = [];
   for (const h of HOUSES) {
     const gg = new THREE.Group();
     gg.position.set(h.x, 0, h.z);
     gg.rotation.y = h.rot;
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(3, 2.3, 3.4), plaster);
-    body.position.y = 1.15; body.castShadow = true; body.receiveShadow = true;
+    // matériaux propres à CETTE maison : elle doit pouvoir s'effacer seule
+    const hMats = [];
+    const own = (m) => { const c = m.clone(); c.transparent = true; c.opacity = 1; hMats.push(c); return c; };
+    const plasterO = own(plaster), woodO = own(wood), winO = own(winMat);
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.1, 2.9), plasterO);
+    body.position.y = 1.05; body.castShadow = true; body.receiveShadow = true;
     gg.add(body);
 
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.9, 1.7, 4), mkMat(h.roof, 0.8));
-    roof.position.y = 3.15; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 4), own(mkMat(h.roof, 0.8)));
+    roof.position.y = 2.82; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
     gg.add(roof);
 
     // poutres d'angle
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.3, 0.16), wood);
-      beam.position.set(sx * 1.45, 1.15, sz * 1.65);
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.1, 0.15), woodO);
+      beam.position.set(sx * 1.25, 1.05, sz * 1.4);
       gg.add(beam);
     }
 
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.45, 0.16), mkMat(0x3a2616, 0.9));
-    door.position.set(0, 0.75, 1.72);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.3, 0.16), own(mkMat(0x3a2616, 0.9)));
+    door.position.set(0, 0.68, 1.47);
     gg.add(door);
 
-    for (const wx of [-0.85, 0.85]) {
-      const win = new THREE.Mesh(
-        new THREE.BoxGeometry(0.62, 0.62, 0.12),
-        new THREE.MeshStandardMaterial({ color: 0xffe0a6, emissive: 0xffbf66, emissiveIntensity: 0.5, roughness: 0.6 })
-      );
-      win.position.set(wx, 1.45, 1.72);
+    for (const wx of [-0.78, 0.78]) {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.12), winO);
+      win.position.set(wx, 1.35, 1.47);
       gg.add(win);
     }
 
-    const chim = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.1, 0.42), mkMat(0x6a5848, 0.95));
-    chim.position.set(0.9, 3.1, -0.7); chim.castShadow = true;
+    const chim = new THREE.Mesh(new THREE.BoxGeometry(0.38, 1.0, 0.38), own(mkMat(0x6a5848, 0.95)));
+    chim.position.set(0.75, 2.8, -0.6); chim.castShadow = true;
     gg.add(chim);
 
     group.add(gg);
-    colliders.push({ x: h.x, z: h.z, r: 2.5 });
+    houses.push({ x: h.x, z: h.z, mats: hMats, fade: 1 });
+    colliders.push({ x: h.x, z: h.z, r: 2.15 });
+  }
+
+  // ---------------------------------------------------------------- petits décors de hameau
+  const barrelGeo = new THREE.CylinderGeometry(0.34, 0.29, 0.72, 10);
+  const barrelMat = mkMat(0x8a6a3e, 0.9);
+  for (const [bx, bz] of [[-3.1, -1.4], [-2.6, -1.9], [3.4, -2.1], [-3.6, 2.6], [3.2, 1.9]]) {
+    const b = new THREE.Mesh(barrelGeo, barrelMat);
+    b.position.set(bx, 0.36, bz); b.castShadow = true; b.receiveShadow = true;
+    group.add(b);
+  }
+
+  // clôtures le long du chemin
+  const postGeo = new THREE.BoxGeometry(0.16, 0.9, 0.16);
+  const railGeo = new THREE.BoxGeometry(0.08, 0.12, 1.55);
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 9; i++) {
+      const z = -7.5 + i * 1.5;
+      const p = new THREE.Mesh(postGeo, wood);
+      p.position.set(pathX(z) + side * 1.8, 0.45, z); p.castShadow = true;
+      group.add(p);
+      if (i < 8) {
+        const zm = z + 0.75;
+        const r = new THREE.Mesh(railGeo, wood);
+        r.position.set(pathX(zm) + side * 1.8, 0.6, zm); r.castShadow = true;
+        group.add(r);
+      }
+    }
+  }
+
+  // carrés de culture (le petit côté « ferme »)
+  const cropMat = mkMat(0x6b8f3c, 0.95);
+  const soilMat = mkMat(0x6b5334, 1);
+  for (const [px, pz] of [[-7.2, -0.2], [7.0, 0.4]]) {
+    const soil = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.12, 2.2), soilMat);
+    soil.position.set(px, 0.06, pz); soil.receiveShadow = true;
+    group.add(soil);
+    for (let r = 0; r < 3; r++) for (let c2 = 0; c2 < 5; c2++) {
+      const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 0), cropMat);
+      bush.position.set(px - 1.2 + c2 * 0.6, 0.2, pz - 0.7 + r * 0.7);
+      bush.castShadow = true;
+      group.add(bush);
+    }
   }
 
   // ---------------------------------------------------------------- puits (place du village)
   {
     const gg = new THREE.Group();
-    gg.position.set(0, 0, 2.6);
+    gg.position.set(0, 0, 1.9);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.18, 8, 18), mkMat(0xa9a08a, 0.95));
     ring.rotation.x = Math.PI / 2; ring.position.y = 0.55; ring.castShadow = true;
     gg.add(ring);
@@ -111,7 +164,7 @@ export function buildWorld(scene) {
     roof.position.y = 1.9; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
     gg.add(roof);
     group.add(gg);
-    colliders.push({ x: 0, z: 2.6, r: 1.0 });
+    colliders.push({ x: 0, z: 1.9, r: 1.0 });
   }
 
   // ---------------------------------------------------------------- arbres
@@ -119,14 +172,14 @@ export function buildWorld(scene) {
   const trunkMat = mkMat(0x5c4327, 0.95);
   const folMats = [mkMat(0x4f7a3e, 0.9), mkMat(0x5f8f4a, 0.9), mkMat(0x6fa055, 0.9)];
   const placed = [];
-  for (let n = 0; n < 17; n++) {
+  for (let n = 0; n < 34; n++) {
     const a = Math.random() * Math.PI * 2;
-    const r = 11 + Math.random() * 34;
+    const r = 8 + Math.random() * 26;
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (Math.abs(x) < 3.2) continue;
+    if (Math.abs(x - pathX(z)) < 2.6) continue;
     let ok = true;
-    for (const h of HOUSES) if (Math.hypot(x - h.x, z - h.z) < 3.4) ok = false;
-    for (const p of placed) if (Math.hypot(x - p[0], z - p[1]) < 3) ok = false;
+    for (const h of HOUSES) if (Math.hypot(x - h.x, z - h.z) < 3.2) ok = false;
+    for (const p of placed) if (Math.hypot(x - p[0], z - p[1]) < 2.6) ok = false;
     if (!ok) continue;
     placed.push([x, z]);
 
@@ -184,6 +237,7 @@ export function buildWorld(scene) {
 
   return {
     colliders,
+    houses,
     update(dt, t) {
       for (const tg of trees) {
         tg.userData.fol.rotation.z = Math.sin(t * 1.1 + tg.userData.seed) * 0.045;

@@ -1,6 +1,6 @@
 /* Service worker : cache-first pour jouer hors ligne.
    Bumper CACHE à chaque déploiement, sinon le téléphone garde l'ancienne version. */
-const CACHE = "royaume3d-v1";
+const CACHE = "royaume3d-v2";
 const ASSETS = [
   "./",
   "./index.html",

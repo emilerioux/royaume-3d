@@ -1,5 +1,5 @@
 /* Royaume 3D — première tranche jouable.
-   Chevalier vu de dos, caméra qui suit dans le dos, décor stylisé doux, PWA hors ligne. */
+   Caméra diorama à angle fixe, joystick aligné sur l écran, décor stylisé doux, PWA hors ligne. */
 
 import * as THREE from "three";
 import { createInput } from "./input.js";
@@ -43,7 +43,7 @@ const scene = new THREE.Scene();
 })();
 scene.fog = new THREE.Fog(0xdcd9c8, 34, 92);
 
-const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 300);
 
 // ---------------------------------------------------------------- lumières
 const hemi = new THREE.HemisphereLight(0xc6dbee, 0x5f5740, 1.05);
@@ -65,41 +65,29 @@ const SUN_OFF = new THREE.Vector3(14, 20, 9);
 const world = buildWorld(scene);
 
 const knight = new Knight();
-knight.root.position.set(0, 0, -6);
+knight.root.position.set(0, 0, -0.6);   // sur la place, au milieu du hameau
 scene.add(knight.root);
 
 const input = createInput(canvas, document.getElementById("joy"), document.getElementById("btn-attack"));
 
-// ---------------------------------------------------------------- caméra qui suit dans le dos
-let camYaw = 0;
-let orbitExtra = 0;
-const camPos = new THREE.Vector3();
+// ---------------------------------------------------------------- caméra « diorama » : angle FIXE, elle suit sans jamais tourner
+const CAM_BASE = new THREE.Vector3(0, 13, 16);  // l'ANGLE (hauteur/recul) ne change jamais
+const CAM_OFF = CAM_BASE.clone();               // seule la distance s'adapte au format d'écran
+const camPos = new THREE.Vector3().copy(knight.root.position).add(CAM_OFF);
 const camGoal = new THREE.Vector3();
-const CAM_DIST = 6.4, CAM_HEIGHT = 3.7;
-{
-  camYaw = knight.yaw;
-  camPos.set(
-    knight.root.position.x - Math.sin(camYaw) * CAM_DIST,
-    CAM_HEIGHT,
-    knight.root.position.z - Math.cos(camYaw) * CAM_DIST
-  );
-  camera.position.copy(camPos);
-}
+camera.position.copy(camPos);
 
 // ---------------------------------------------------------------- helpers
-const fwd = new THREE.Vector3(), right = new THREE.Vector3(), moveDir = new THREE.Vector3();
+const moveDir = new THREE.Vector3();
 const WORLD_R = 46;
 
 function step(dt) {
-  // --- entrée -> direction dans le repère caméra
+  // --- entrée : le joystick est aligné sur l'ÉCRAN, pas sur le chevalier.
+  //     Haut = vers le haut de l'écran, toujours. C'est ce qui rend ça prévisible.
   const mv = input.move;
   const kp = knight.root.position;
-  fwd.set(kp.x - camPos.x, 0, kp.z - camPos.z);
-  if (fwd.lengthSq() < 1e-4) fwd.set(0, 0, 1);
-  fwd.normalize();
-  right.set(fwd.z, 0, -fwd.x);
 
-  moveDir.set(0, 0, 0).addScaledVector(fwd, -mv.y).addScaledVector(right, mv.x);
+  moveDir.set(mv.x, 0, mv.y);
   const mag = Math.min(1, moveDir.length());
   const moving = mag > 0.08;
   let speed = 0;
@@ -124,22 +112,19 @@ function step(dt) {
   // --- chevalier
   knight.update(dt, { dir: { x: moveDir.x, z: moveDir.z }, moving, speed });
 
-  // --- caméra
-  orbitExtra += input.consumeOrbit();
-  orbitExtra *= Math.pow(0.02, dt);           // revient doucement derrière
-  let d = ((knight.yaw + orbitExtra) - camYaw) % (Math.PI * 2);
-  if (d > Math.PI) d -= Math.PI * 2;
-  if (d < -Math.PI) d += Math.PI * 2;
-  camYaw += d * (1 - Math.pow(0.0009, dt));
-
-  camGoal.set(
-    kp.x - Math.sin(camYaw) * CAM_DIST,
-    CAM_HEIGHT,
-    kp.z - Math.cos(camYaw) * CAM_DIST
-  );
-  camPos.lerp(camGoal, 1 - Math.pow(0.0016, dt));
+  // --- caméra : décalage constant -> l'orientation ne change JAMAIS, elle glisse seulement
+  camGoal.copy(kp).add(CAM_OFF);
+  camPos.lerp(camGoal, 1 - Math.pow(0.0009, dt));
   camera.position.copy(camPos);
-  camera.lookAt(kp.x + Math.sin(camYaw) * 2.2, kp.y + 1.5, kp.z + Math.cos(camYaw) * 2.2);
+  camera.lookAt(camPos.x - CAM_OFF.x, camPos.y - CAM_OFF.y + 1.1, camPos.z - CAM_OFF.z);
+
+  // --- une maison qui cache le chevalier s'efface en fondu (sinon on le perd de vue)
+  for (const h of world.houses) {
+    const inFront = h.z > kp.z && (h.z - kp.z) < 7 && Math.abs(h.x - kp.x) < 2.8;
+    const target = inFront ? 0.3 : 1;
+    h.fade += (target - h.fade) * Math.min(1, dt * 7);
+    for (const m of h.mats) m.opacity = h.fade;
+  }
 
   // --- soleil colle au joueur (ombres nettes et proches)
   sun.position.copy(kp).add(SUN_OFF);
@@ -170,11 +155,17 @@ function loop(now) {
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false);
-  camera.aspect = w / h;
+  const asp = w / h;
+  camera.aspect = asp;
   camera.updateProjectionMatrix();
+  // en portrait l'écran est étroit : on recule (sans changer l'angle) pour voir autant de décor
+  const k = THREE.MathUtils.clamp(0.82 / asp, 1, 1.9);
+  CAM_OFF.copy(CAM_BASE).multiplyScalar(k);
 }
 window.addEventListener("resize", resize);
 resize();
+camPos.copy(knight.root.position).add(CAM_OFF);   // pas de zoom parasite au démarrage
+camera.position.copy(camPos);
 
 // ---------------------------------------------------------------- go
 uiEl.hidden = false;

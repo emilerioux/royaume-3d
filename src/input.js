@@ -1,12 +1,13 @@
-/* Contrôles tactiles : joystick à gauche (marche), glissé à droite (caméra),
-   bouton ⚔️ + clavier pour tester au bureau. */
+/* Contrôles tactiles : un seul geste — le joystick à gauche.
+   La caméra ne tourne jamais, donc le joystick est aligné sur l'écran :
+   pousser vers le haut = aller vers le haut de l'écran. Toujours.
+   Bouton ⚔️ + clavier pour tester au bureau. */
 
 export function createInput(canvas, joyEl, atkBtn) {
   const knob = joyEl.firstElementChild;
-  const s = { mx: 0, my: 0, orbit: 0, atk: false };
+  const s = { mx: 0, my: 0, atk: false };
   let joyId = null, base = { x: 0, y: 0 };
-  let orbId = null, orbLast = 0;
-  const halfW = () => window.innerWidth * 0.5;
+  const halfW = () => window.innerWidth * 0.55;
 
   canvas.addEventListener("pointerdown", (e) => {
     if (e.clientX < halfW() && joyId === null) {
@@ -16,9 +17,6 @@ export function createInput(canvas, joyEl, atkBtn) {
       joyEl.style.top = e.clientY + "px";
       joyEl.classList.add("on");
       knob.style.transform = "translate(0,0)";
-    } else if (e.clientX >= halfW() && orbId === null) {
-      orbId = e.pointerId;
-      orbLast = e.clientX;
     }
   });
 
@@ -32,9 +30,6 @@ export function createInput(canvas, joyEl, atkBtn) {
       const mag = cl / R;
       s.mx = mag < 0.12 ? 0 : nx * mag;
       s.my = mag < 0.12 ? 0 : ny * mag;
-    } else if (e.pointerId === orbId) {
-      s.orbit += (e.clientX - orbLast) * 0.005;
-      orbLast = e.clientX;
     }
   });
 
@@ -43,7 +38,6 @@ export function createInput(canvas, joyEl, atkBtn) {
       joyId = null; s.mx = 0; s.my = 0;
       joyEl.classList.remove("on");
     }
-    if (e.pointerId === orbId) orbId = null;
   };
   canvas.addEventListener("pointerup", up);
   canvas.addEventListener("pointercancel", up);
@@ -69,7 +63,6 @@ export function createInput(canvas, joyEl, atkBtn) {
       if (keys["arrowdown"] || keys["s"]) y += 1;
       return { x, y };
     },
-    consumeOrbit() { const o = s.orbit; s.orbit = 0; return o; },
     consumeAttack() { const a = s.atk; s.atk = false; return a; },
   };
 }
