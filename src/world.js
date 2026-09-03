@@ -9,7 +9,10 @@ const C = {
 };
 
 // le chemin serpente doucement — bien plus joli qu'une ligne droite
-const pathX = (z) => Math.sin(z * 0.06) * 3.5;
+export const pathX = (z) => Math.sin(z * 0.06) * 3.5;
+
+// nature du sol sous un point : sert à colorer la poussière des pas
+export const groundKind = (x, z) => (Math.abs(x - pathX(z)) < 1.35 ? "terre" : "herbe");
 
 export function buildWorld(scene) {
   const colliders = [];

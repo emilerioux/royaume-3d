@@ -3,7 +3,8 @@
 
 import * as THREE from "three";
 import { createInput } from "./input.js";
-import { buildWorld } from "./world.js";
+import { buildWorld, groundKind } from "./world.js";
+import { Dust, BladeTrail } from "./fx.js";
 import { Knight, WALK_SPEED, RUN_SPEED } from "./knight.js";
 
 const DEBUG = location.search.includes("debug");
@@ -64,7 +65,13 @@ const SUN_OFF = new THREE.Vector3(14, 20, 9);
 // ---------------------------------------------------------------- monde + chevalier
 const world = buildWorld(scene);
 
-const knight = new Knight();
+const dust = new Dust(scene);
+const trail = new BladeTrail(scene);
+
+const knight = new Knight({
+  trail,
+  onFootstep: (x, y, z) => dust.spawn(x, y, z, groundKind(x, z)),
+});
 knight.root.position.set(0, 0, -0.6);   // sur la place, au milieu du hameau
 scene.add(knight.root);
 
@@ -79,7 +86,10 @@ camera.position.copy(camPos);
 
 // ---------------------------------------------------------------- helpers
 const moveDir = new THREE.Vector3();
+const vel = new THREE.Vector3();          // vitesse réelle : départ et arrêt progressifs
+const heading = new THREE.Vector3(0, 0, 1);
 const WORLD_R = 46;
+const ACCEL = 22, DECEL = 30;             // m/s²
 
 function step(dt) {
   // --- entrée : le joystick est aligné sur l'ÉCRAN, pas sur le chevalier.
@@ -89,13 +99,33 @@ function step(dt) {
 
   moveDir.set(mv.x, 0, mv.y);
   const mag = Math.min(1, moveDir.length());
-  const moving = mag > 0.08;
-  let speed = 0;
-  if (moving) {
+  const pushing = mag > 0.08;
+
+  // demi-tour : on inverse franchement la direction alors qu'on lançait de la vitesse
+  let turning = false;
+  if (pushing) {
     moveDir.normalize();
-    speed = mag < 0.62 ? WALK_SPEED : RUN_SPEED;
-    kp.addScaledVector(moveDir, speed * dt);
+    if (vel.lengthSq() > 2.2 && moveDir.dot(heading) < -0.35) turning = true;
   }
+
+  // vitesse voulue -> vitesse réelle (accélération / freinage)
+  const want = pushing ? (mag < 0.62 ? WALK_SPEED : RUN_SPEED) * (turning ? 0.45 : 1) : 0;
+  const tvx = pushing ? moveDir.x * want : 0;
+  const tvz = pushing ? moveDir.z * want : 0;
+  const dvx = tvx - vel.x, dvz = tvz - vel.z;
+  const dmag = Math.hypot(dvx, dvz);
+  const step2 = (pushing ? ACCEL : DECEL) * dt;
+  if (dmag > step2 && dmag > 1e-4) { vel.x += (dvx / dmag) * step2; vel.z += (dvz / dmag) * step2; }
+  else { vel.x = tvx; vel.z = tvz; }
+
+  const speed = Math.hypot(vel.x, vel.z);
+  const moving = speed > 0.12;
+  if (moving) {
+    heading.set(vel.x / speed, 0, vel.z / speed);
+    kp.x += vel.x * dt;
+    kp.z += vel.z * dt;
+  }
+  const braking = !pushing && speed > 1.2;
 
   // --- limites + collisions douces
   const rr = Math.hypot(kp.x, kp.z);
@@ -109,8 +139,15 @@ function step(dt) {
   // --- attaque
   if (input.consumeAttack()) knight.triggerAttack();
 
-  // --- chevalier
-  knight.update(dt, { dir: { x: moveDir.x, z: moveDir.z }, moving, speed });
+  // --- chevalier (renvoie l'avancée du coup d'épée)
+  const lunge = knight.update(dt, {
+    dir: { x: heading.x, z: heading.z },
+    moving, speed, turning, braking,
+  });
+  if (lunge) {
+    kp.x += Math.sin(knight.yaw) * lunge * dt * 3.2;
+    kp.z += Math.cos(knight.yaw) * lunge * dt * 3.2;
+  }
 
   // --- caméra : décalage constant -> l'orientation ne change JAMAIS, elle glisse seulement
   camGoal.copy(kp).add(CAM_OFF);
@@ -121,7 +158,7 @@ function step(dt) {
   // --- une maison qui cache le chevalier s'efface en fondu (sinon on le perd de vue)
   for (const h of world.houses) {
     const inFront = h.z > kp.z && (h.z - kp.z) < 7 && Math.abs(h.x - kp.x) < 2.8;
-    const target = inFront ? 0.3 : 1;
+    const target = inFront ? 0.42 : 1;
     h.fade += (target - h.fade) * Math.min(1, dt * 7);
     for (const m of h.mats) m.opacity = h.fade;
   }
@@ -132,6 +169,7 @@ function step(dt) {
   sun.target.updateMatrixWorld();
 
   world.update(dt, performance.now() / 1000);
+  dust.update(dt);
 }
 
 // ---------------------------------------------------------------- boucle
@@ -173,7 +211,9 @@ if (DEBUG) fpsEl.hidden = false;
 requestAnimationFrame(loop);
 requestAnimationFrame(() => { loaderEl.classList.add("gone"); setTimeout(() => loaderEl.remove(), 600); });
 
-if (DEBUG) window.__dbg = { knight, camera, THREE, input };
+addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "h") knight.hurt(); });
+
+if (DEBUG) window.__dbg = { knight, camera, THREE, input, dust, trail };
 
 if ("serviceWorker" in navigator && !DEBUG) {
   addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
